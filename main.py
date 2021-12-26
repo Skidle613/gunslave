@@ -98,28 +98,32 @@ class Player(pygame.sprite.Sprite):
         if self.rect.x < -self.rect.width:
             try:
                 select_room(rooms[selected_room.i][selected_room.j - 1])
-                self.rect.x += w + self.rect.width
+                self.mb_x += w + self.rect.width
+                self.rect.x = self.mb_x
             except Exception:
                 self.mb_x += v / fps
                 self.rect.x = self.mb_x
         if self.rect.x > w:
             try:
                 select_room(rooms[selected_room.i][selected_room.j + 1])
-                self.rect.x -= w + self.rect.width
+                self.mb_x -= w + self.rect.width
+                self.rect.x = self.mb_x
             except Exception:
                 self.mb_x -= v / fps
                 self.rect.x = self.mb_x
         if self.rect.y < -self.rect.height:
             try:
                 select_room(rooms[selected_room.i - 1][selected_room.j])
-                self.rect.y += h + self.rect.height
+                self.mb_y += h + self.rect.height
+                self.rect.y = self.mb_y
             except Exception:
                 self.mb_y += v / fps
                 self.rect.y = self.mb_y
         if self.rect.y > h:
             try:
                 select_room(rooms[selected_room.i + 1][selected_room.j])
-                self.rect.y -= h + self.rect.height
+                self.mb_y -= h + self.rect.height
+                self.rect.y = self.mb_y
             except Exception:
                 self.mb_y -= v / fps
                 self.rect.y = self.mb_y
@@ -137,16 +141,17 @@ class Room(pygame.sprite.Sprite):
             pass
         elif type == 'i':
             image = load_image('ice_floor.png')
-        rooms_copy = rooms
         try:
             rooms[i][j] = self
         except Exception:
-            for _ in range(max(i + 1, len(rooms) + 1)):
-                for o in range(max(j + 1, len(rooms[_]) + 1)):
-                    try:
-                        rooms[_][o] = rooms_copy[_][o]
-                    except Exception:
-                        rooms[_][o] = None
+            if i >= len(rooms):
+                for _ in range(i - len(rooms) + 1):
+                    rooms.append([None * len(rooms[0])])
+            if j >= len(rooms[0]):
+                for elem in rooms:
+                    for _ in range(j - len(rooms[0]) + 1):
+                        elem.append(None)
+            rooms[i][j] = self
         self.image = pygame.transform.scale(image, (1960, 1080))
         self.rect = self.image.get_rect()
         self.rect.x = 0
@@ -169,22 +174,23 @@ class Wall(pygame.sprite.Sprite):
 
 
 def select_room(rooom):
+    global selected_room
     selected_room = rooom
-    for _ in range(len(rooms)):
-        for o in range(len(rooms[_])):
-            if rooms[_][o]:
-                if rooms[_][o] == rooom:
-                    rooms[_][o].rect.x = 0
-                    rooms[_][o].rect.y = 0
+    for a in range(len(rooms)):
+        for b in range(len(rooms[a])):
+            if rooms[a][b]:
+                if rooms[a][b] == rooom:
+                    rooms[a][b].rect.x = 0
+                    rooms[a][b].rect.y = 0
                     for elem in walls_list:
-                        if elem.room == room:
+                        if elem.room == rooom:
                             elem.rect.x = elem.x
                             elem.rect.y = elem.y
                 else:
-                    rooms[_][o].rect.x = -10000
-                    rooms[_][o].rect.x = -10000
+                    rooms[a][b].rect.x = -10000
+                    rooms[a][b].rect.x = -10000
                     for elem in walls_list:
-                        if elem.room == rooms[_][o]:
+                        if elem.room == rooms[a][b]:
                             elem.rect.x = -10000
                             elem.rect.y = -10000
 
@@ -200,9 +206,8 @@ player_sprite = pygame.sprite.Group()
 player = Player()
 
 rooms_sprite = pygame.sprite.Group()
-room2 = Room('i', player, 0, 2)
 room = Room('g', player, 0, 1)
-
+room2 = Room('i', player, 0, 2)
 
 select_room(room)
 
