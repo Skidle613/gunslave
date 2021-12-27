@@ -97,6 +97,7 @@ class Player(pygame.sprite.Sprite):
                 self.rect.x = self.mb_x
         if self.rect.x < -self.rect.width:
             try:
+                assert selected_room.j != 0
                 select_room(rooms[selected_room.i][selected_room.j - 1])
                 self.mb_x += w + self.rect.width
                 self.rect.x = self.mb_x
@@ -113,6 +114,7 @@ class Player(pygame.sprite.Sprite):
                 self.rect.x = self.mb_x
         if self.rect.y < -self.rect.height:
             try:
+                assert selected_room.i != 0
                 select_room(rooms[selected_room.i - 1][selected_room.j])
                 self.mb_y += h + self.rect.height
                 self.rect.y = self.mb_y
@@ -125,6 +127,44 @@ class Player(pygame.sprite.Sprite):
                 self.mb_y -= h + self.rect.height
                 self.rect.y = self.mb_y
             except Exception:
+                self.mb_y -= v / fps
+                self.rect.y = self.mb_y
+        if self.rect.x <= 0:
+            try:
+                assert selected_room.j != 0
+                a = rooms[selected_room.i][selected_room.j - 1]
+                if a is None:
+                    self.mb_x += v / fps
+                    self.rect.x = self.mb_x
+            except:
+                self.mb_x += v / fps
+                self.rect.x = self.mb_x
+        if self.rect.x >= w - self.rect.width:
+            try:
+                a = rooms[selected_room.i][selected_room.j + 1]
+                if a is None:
+                    self.mb_x -= v / fps
+                    self.rect.x = self.mb_x
+            except:
+                self.mb_x -= v / fps
+                self.rect.x = self.mb_x
+        if self.rect.y <= 0:
+            try:
+                assert selected_room.i != 0
+                a = rooms[selected_room.i - 1][selected_room.j]
+                if a is None:
+                    self.mb_y += v / fps
+                    self.rect.y = self.mb_y
+            except:
+                self.mb_y += v / fps
+                self.rect.y = self.mb_y
+        if self.rect.y >= h - self.rect.height:
+            try:
+                a = rooms[selected_room.i + 1][selected_room.j]
+                if a is None:
+                    self.mb_y -= v / fps
+                    self.rect.y = self.mb_y
+            except:
                 self.mb_y -= v / fps
                 self.rect.y = self.mb_y
 
@@ -175,11 +215,14 @@ class Wall(pygame.sprite.Sprite):
 
 def select_room(rooom):
     global selected_room
-    selected_room = rooom
+    if rooom is None:
+        a = 4
+        a += '4'
     for a in range(len(rooms)):
         for b in range(len(rooms[a])):
             if rooms[a][b]:
                 if rooms[a][b] == rooom:
+                    selected_room = rooom
                     rooms[a][b].rect.x = 0
                     rooms[a][b].rect.y = 0
                     for elem in walls_list:
@@ -210,9 +253,6 @@ room = Room('g', player, 0, 1)
 room2 = Room('i', player, 0, 2)
 
 select_room(room)
-
-wall = Wall(player, (0, 0, w, 50), room)
-wall_2 = Wall(player, (0, h - 50, w, 50), room)
 
 pygame.mouse.set_visible(False)
 
