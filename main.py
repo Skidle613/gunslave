@@ -1,12 +1,12 @@
 import os
+import random
+
 import pygame
 import ctypes
 
 user32 = ctypes.windll.user32
 pygame.init()
 size = w, h = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
-all_sprites = pygame.sprite.Group()
-walls = pygame.sprite.Group()
 walls_list = []
 v = 150
 fps = 60
@@ -45,23 +45,32 @@ class Player(pygame.sprite.Sprite):
         self.rect.x = w // 2
         self.rect.y = h // 2
         self.index = 0
-        self.count = 0
+        self.count1 = 0
+        self.count2 = 0
         self.mb_x = w // 2
         self.mb_y = h // 2
         self.orientation = 1
+        self.health = 5
+        self.shield = 5
         self.players = ['player_1.png', 'player_2.png', 'player_3.png', 'player_4.png', 'player_5.png', 'player_6.png',
                         'player_7.png', 'player_8.png']
 
     def life(self):
-        if self.count == 8:
+        if self.count1 == 8:
             self.index = (self.index + 1) % 8
             if self.orientation == 1:
                 self.image = pygame.transform.scale(load_image(self.players[self.index]), (130, 161))
             else:
                 self.image = self.image = pygame.transform.flip(
                     pygame.transform.scale(load_image(self.players[self.index]), (130, 161)), True, False)
-            self.count = 0
-        self.count += 1
+            self.count1 = 0
+        self.count1 += 1
+        if self.count2 == fps * 2:
+            self.shield += 1
+            if self.shield > 5:
+                self.shield = 5
+            self.count2 = 0
+        self.count2 += 1
 
     def update(self, event):
         global selected_room
@@ -199,6 +208,57 @@ class Room(pygame.sprite.Sprite):
         self.player = player
 
 
+class Monster(pygame.sprite.Sprite):
+    def __init__(self, player, image):
+        super().__init__(mobs_sprite)
+        self.health = 3
+        self.player = player
+        self.v = 100
+        self.image = pygame.transform.scale(load_image(image), (60, 80))
+        self.rect = self.image.get_rect()
+        self.tick = fps - 1
+        while True:
+            self.rect.x = random.randrange(w - self.rect.width)
+            self.rect.y = random.randrange(h - self.rect.height)
+            print(pygame.sprite.spritecollideany(self, walls))
+            print(pygame.sprite.spritecollideany(self, player_sprite))
+            print(pygame.sprite.spritecollide(self, mobs_sprite, False))
+            if pygame.sprite.spritecollideany(self, walls) is None and pygame.sprite.spritecollideany(self,
+                                                                                                      player_sprite) is None and len(
+                pygame.sprite.spritecollide(self, mobs_sprite, False)) == 1:
+                break
+        self.mb_x = self.rect.x
+        self.mb_y = self.rect.y
+
+    def update(self):
+        x = self.player.rect.x + self.player.rect.width // 2 - self.rect.x - self.rect.width // 2
+        y = self.player.rect.y + self.player.rect.height // 2 - self.rect.y - self.rect.height // 2
+        v_x = 0
+        v_y = 0
+        if x != 0:
+            v_x = (self.v / fps) * (abs(x) / (abs(x) + abs(y)))
+        if y != 0:
+            v_y = (self.v / fps) * (abs(y) / (abs(x) + abs(y)))
+        if x < 0:
+            v_x = -v_x
+        if y < 0:
+            v_y = -v_y
+        if x == 0 and y == 0:
+            if self.tick == fps:
+                if self.player.shield != 0:
+                    self.player.shield -= 1
+                else:
+                    self.player.health -= 1
+                self.tick = 0
+        self.mb_x += v_x
+        self.mb_y += v_y
+        self.rect.x = self.mb_x
+        self.rect.y = self.mb_y
+        self.tick += 1
+        if self.tick > fps:
+            self.tick = fps
+
+
 class Wall(pygame.sprite.Sprite):
     def __init__(self, player, coords, room):
         super().__init__(walls)
@@ -238,44 +298,37 @@ def select_room(rooom):
                             elem.rect.y = -10000
 
 
-arrow_sprite = pygame.sprite.Group()
-arrow = pygame.sprite.Sprite(arrow_sprite)
-arrow.add(all_sprites)
-arrow_image = load_image('arrow.png')
-arrow.image = arrow_image
-arrow.rect = arrow.image.get_rect()
-
+all_sprites = pygame.sprite.Group()
+walls = pygame.sprite.Group()
+rooms_sprite = pygame.sprite.Group()
 player_sprite = pygame.sprite.Group()
+mobs_sprite = pygame.sprite.Group()
+
 player = Player()
 
-rooms_sprite = pygame.sprite.Group()
 room = Room('g', player, 0, 1)
 room2 = Room('i', player, 0, 2)
 
-select_room(room)
+mob = Monster(player, 'mob1.png')
+mob2 = Monster(player, 'mob1.png')
+mob3 = Monster(player, 'mob1.png')
+mob4 = Monster(player, 'mob1.png')
+mob5 = Monster(player, 'mob1.png')
 
-pygame.mouse.set_visible(False)
+select_room(room)
 
 running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            arrow.image = pygame.transform.scale(arrow_image, (40, 37))
-        if event.type == pygame.MOUSEBUTTONUP:
-            arrow.image = arrow_image
     player.life()
     player.update(pygame.key.get_pressed())
-    if pygame.mouse.get_focused():
-        arrow.rect.x = pygame.mouse.get_pos()[0]
-        arrow.rect.y = pygame.mouse.get_pos()[1]
-    else:
-        arrow.rect.x, arrow.rect.y = -200, -200
     screen.fill((0, 0, 0))
     all_sprites.draw(screen)
     player_sprite.draw(screen)
-    arrow_sprite.draw(screen)
+    mobs_sprite.draw(screen)
+    mobs_sprite.update()
     clock.tick(fps)
     pygame.display.flip()
 pygame.quit()
