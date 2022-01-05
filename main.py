@@ -77,7 +77,7 @@ class Player(pygame.sprite.Sprite):
         if event[pygame.K_w]:
             self.mb_y -= v / fps
             self.rect.y = self.mb_y
-            if pygame.sprite.spritecollideany(self, walls):
+            if pygame.sprite.spritecollideany(self, walls) or pygame.sprite.spritecollideany(self, mobs_sprite):
                 self.mb_y += v / fps
                 self.rect.y = self.mb_y
         if event[pygame.K_d]:
@@ -86,13 +86,13 @@ class Player(pygame.sprite.Sprite):
             if self.orientation == 0:
                 self.orientation = 1
                 self.image = pygame.transform.flip(self.image, True, False)
-            if pygame.sprite.spritecollideany(self, walls):
+            if pygame.sprite.spritecollideany(self, walls) or pygame.sprite.spritecollideany(self, mobs_sprite):
                 self.mb_x -= v / fps
                 self.rect.x = self.mb_x
         if event[pygame.K_s]:
             self.mb_y += v / fps
             self.rect.y = self.mb_y
-            if pygame.sprite.spritecollideany(self, walls):
+            if pygame.sprite.spritecollideany(self, walls) or pygame.sprite.spritecollideany(self, mobs_sprite):
                 self.mb_y -= v / fps
                 self.rect.y = self.mb_y
         if event[pygame.K_a]:
@@ -101,7 +101,7 @@ class Player(pygame.sprite.Sprite):
             if self.orientation == 1:
                 self.orientation = 0
                 self.image = pygame.transform.flip(self.image, True, False)
-            if pygame.sprite.spritecollideany(self, walls):
+            if pygame.sprite.spritecollideany(self, walls) or pygame.sprite.spritecollideany(self, mobs_sprite):
                 self.mb_x += v / fps
                 self.rect.x = self.mb_x
         if self.rect.x < -self.rect.width:
@@ -254,6 +254,12 @@ class Monster(pygame.sprite.Sprite):
         self.mb_y += v_y
         self.rect.x = self.mb_x
         self.rect.y = self.mb_y
+        if pygame.sprite.spritecollideany(self, player_sprite) or len(
+                pygame.sprite.spritecollide(self, mobs_sprite, False)) > 1:
+            self.mb_x -= v_x
+            self.mb_y -= v_y
+            self.rect.x = self.mb_x
+            self.rect.y = self.mb_y
         self.tick += 1
         if self.tick > fps:
             self.tick = fps
@@ -308,6 +314,8 @@ player = Player()
 
 room = Room('g', player, 0, 1)
 room2 = Room('i', player, 0, 2)
+
+wall = Wall(player, [0, 0, 100, 100], room)
 
 mob = Monster(player, 'mob1.png')
 mob2 = Monster(player, 'mob1.png')
