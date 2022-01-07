@@ -66,11 +66,27 @@ class Player(pygame.sprite.Sprite):
             self.count1 = 0
         self.count1 += 1
         if self.count2 == fps * 2:
-            self.shield += 1
+            if self.health != 0:
+                self.shield += 1
             if self.shield > 5:
                 self.shield = 5
             self.count2 = 0
         self.count2 += 1
+        global player_health
+        for sprite in player_health:
+            sprite.kill()
+        for i in range(self.health):
+            heart = pygame.sprite.Sprite(player_health)
+            heart.image = pygame.transform.scale(load_image('heart.png'), (20, 20))
+            heart.rect = heart.image.get_rect()
+            heart.rect.x = 20 + 20 * i
+            heart.rect.y = 20
+        for i in range(self.shield):
+            shield = pygame.sprite.Sprite(player_health)
+            shield.image = pygame.transform.scale(load_image('shield.png'), (20, 20))
+            shield.rect = shield.image.get_rect()
+            shield.rect.x = 20 + 20 * i
+            shield.rect.y = 60
 
     def update(self, event):
         global selected_room
@@ -220,9 +236,6 @@ class Monster(pygame.sprite.Sprite):
         while True:
             self.rect.x = random.randrange(w - self.rect.width)
             self.rect.y = random.randrange(h - self.rect.height)
-            print(pygame.sprite.spritecollideany(self, walls))
-            print(pygame.sprite.spritecollideany(self, player_sprite))
-            print(pygame.sprite.spritecollide(self, mobs_sprite, False))
             if pygame.sprite.spritecollideany(self, walls) is None and pygame.sprite.spritecollideany(self,
                                                                                                       player_sprite) is None and len(
                 pygame.sprite.spritecollide(self, mobs_sprite, False)) == 1:
@@ -243,19 +256,21 @@ class Monster(pygame.sprite.Sprite):
             v_x = -v_x
         if y < 0:
             v_y = -v_y
-        if x == 0 and y == 0:
-            if self.tick == fps:
-                if self.player.shield != 0:
-                    self.player.shield -= 1
-                else:
-                    self.player.health -= 1
-                self.tick = 0
         self.mb_x += v_x
         self.mb_y += v_y
         self.rect.x = self.mb_x
         self.rect.y = self.mb_y
         if pygame.sprite.spritecollideany(self, player_sprite) or len(
                 pygame.sprite.spritecollide(self, mobs_sprite, False)) > 1:
+            if pygame.sprite.spritecollideany(self, player_sprite):
+                if self.tick == fps:
+                    if self.player.shield != 0:
+                        self.player.shield -= 1
+                    else:
+                        self.player.health -= 1
+                        if self.player.health <= 0:
+                            self.player.kill()
+                    self.tick = 0
             self.mb_x -= v_x
             self.mb_y -= v_y
             self.rect.x = self.mb_x
@@ -309,6 +324,7 @@ walls = pygame.sprite.Group()
 rooms_sprite = pygame.sprite.Group()
 player_sprite = pygame.sprite.Group()
 mobs_sprite = pygame.sprite.Group()
+player_health = pygame.sprite.Group()
 
 player = Player()
 
@@ -336,6 +352,7 @@ while running:
     all_sprites.draw(screen)
     player_sprite.draw(screen)
     mobs_sprite.draw(screen)
+    player_health.draw(screen)
     mobs_sprite.update()
     clock.tick(fps)
     pygame.display.flip()
