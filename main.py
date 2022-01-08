@@ -73,20 +73,14 @@ class Player(pygame.sprite.Sprite):
             self.count2 = 0
         self.count2 += 1
         global player_health
-        for sprite in player_health:
-            sprite.kill()
+        for sprite in player_health[0]:
+            sprite.rect.x = -400
+        for sprite in player_health[1]:
+            sprite.rect.x = -400
         for i in range(self.health):
-            heart = pygame.sprite.Sprite(player_health)
-            heart.image = pygame.transform.scale(load_image('heart.png'), (20, 20))
-            heart.rect = heart.image.get_rect()
-            heart.rect.x = 20 + 20 * i
-            heart.rect.y = 20
+            player_health[0][i].rect.x = 20 + 20 * i
         for i in range(self.shield):
-            shield = pygame.sprite.Sprite(player_health)
-            shield.image = pygame.transform.scale(load_image('shield.png'), (20, 20))
-            shield.rect = shield.image.get_rect()
-            shield.rect.x = 20 + 20 * i
-            shield.rect.y = 60
+            player_health[1][i].rect.x = 20 + 20 * i
 
     def update(self, event):
         global selected_room
@@ -324,9 +318,29 @@ walls = pygame.sprite.Group()
 rooms_sprite = pygame.sprite.Group()
 player_sprite = pygame.sprite.Group()
 mobs_sprite = pygame.sprite.Group()
-player_health = pygame.sprite.Group()
+health_shield = pygame.sprite.Group()
 
 player = Player()
+
+
+player_health = [[], []]
+for i in range(player.health):
+    heart = pygame.sprite.Sprite(health_shield)
+    heart.image = pygame.transform.scale(load_image('heart.png'), (20, 20))
+    heart.rect = heart.image.get_rect()
+    heart.rect.x = 20 + 20 * i
+    heart.rect.y = 20
+    player_health[0].append(heart)
+for i in range(player.shield):
+    shield = pygame.sprite.Sprite(health_shield)
+    shield.image = pygame.transform.scale(load_image('shield.png'), (20, 20))
+    shield.rect = shield.image.get_rect()
+    shield.rect.x = 20 + 20 * i
+    shield.rect.y = 60
+    player_health[1].append(shield)
+
+
+
 
 room = Room('g', player, 0, 1)
 room2 = Room('i', player, 0, 2)
@@ -352,7 +366,7 @@ while running:
     all_sprites.draw(screen)
     player_sprite.draw(screen)
     mobs_sprite.draw(screen)
-    player_health.draw(screen)
+    health_shield.draw(screen)
     mobs_sprite.update()
     clock.tick(fps)
     pygame.display.flip()
