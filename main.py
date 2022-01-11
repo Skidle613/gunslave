@@ -10,6 +10,7 @@ size = w, h = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 walls_list = []
 v = 150
 fps = 60
+score = 0
 selected_room = None
 rooms = [[]]
 screen = pygame.display.set_mode(size)
@@ -31,6 +32,103 @@ def load_image(name, color_key=None):
     else:
         image = image.convert_alpha()
     return image
+
+
+def start_screen():
+    title_text = "GUNSLAVE"
+    intro_text = ["НАЖМИТЕ ESC для выхода из игры",
+                  "НАЖМИТЕ F для открытия окна улучшения персонажа",
+                  "НАЖМИТЕ SPACE для начала игры"]
+    fon = pygame.transform.scale(load_image('fon.jpg'), (w, h))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 30)
+    title_font = pygame.font.Font(None, 120)
+    title_rendered = title_font.render(title_text, 1, pygame.Color((220, 168, 43)))
+    title_rect = title_rendered.get_rect()
+    title_rect.x = w // 2 - title_rect.width // 2
+    title_rect.top = 100
+    screen.blit(title_rendered, title_rect)
+    text_coord = 820
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color((152, 50, 231)))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 40
+        intro_rect.top = text_coord
+        intro_rect.x = w // 2 - 200
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                if event.key == pygame.K_SPACE:
+                    return
+                if event.key == pygame.K_f:
+                    pass
+        pygame.display.flip()
+        clock.tick(fps)
+
+
+def end_game(score):
+    global walls_list, selected_room, rooms, all_sprites, walls,\
+        rooms_sprite, player_sprite, mobs_sprite,\
+        health_shield,\
+        player, player_health
+    walls_list = []
+    selected_room = None
+    rooms = [[]]
+    intro_text = ["Вы закончили игру", "Ваш счет: ", str(score), 'Нажмите любую клавишу чтобы продолжить']
+    fon = pygame.transform.scale(load_image('fon.jpg'), (w, h))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 30)
+    text_coord = 300
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color((152, 50, 231)))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 40
+        intro_rect.top = text_coord
+        intro_rect.x = w // 2 - 200
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    all_sprites = pygame.sprite.Group()
+    walls = pygame.sprite.Group()
+    rooms_sprite = pygame.sprite.Group()
+    player_sprite = pygame.sprite.Group()
+    mobs_sprite = pygame.sprite.Group()
+    health_shield = pygame.sprite.Group()
+
+    player = Player()
+
+    player_health = [[], []]
+    for i in range(player.health):
+        heart = pygame.sprite.Sprite(health_shield)
+        heart.image = pygame.transform.scale(load_image('heart.png'), (20, 20))
+        heart.rect = heart.image.get_rect()
+        heart.rect.x = 20 + 20 * i
+        heart.rect.y = 20
+        player_health[0].append(heart)
+    for i in range(player.shield):
+        shield = pygame.sprite.Sprite(health_shield)
+        shield.image = pygame.transform.scale(load_image('shield.png'), (20, 20))
+        shield.rect = shield.image.get_rect()
+        shield.rect.x = 20 + 20 * i
+        shield.rect.y = 60
+        player_health[1].append(shield)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                start_screen()
+        pygame.display.flip()
+        clock.tick(fps)
 
 
 class Player(pygame.sprite.Sprite):
@@ -114,12 +212,16 @@ class Player(pygame.sprite.Sprite):
             if pygame.sprite.spritecollideany(self, walls) or pygame.sprite.spritecollideany(self, mobs_sprite):
                 self.mb_x += v / fps
                 self.rect.x = self.mb_x
+
         if self.rect.x < -self.rect.width:
             try:
                 assert selected_room.j != 0
                 select_room(rooms[selected_room.i][selected_room.j - 1])
                 self.mb_x += w + self.rect.width
                 self.rect.x = self.mb_x
+                for sprite in mobs_sprite:
+                    sprite.mb_x += w
+                    sprite.rect.x = sprite.mb_x
             except Exception:
                 self.mb_x += v / fps
                 self.rect.x = self.mb_x
@@ -128,6 +230,9 @@ class Player(pygame.sprite.Sprite):
                 select_room(rooms[selected_room.i][selected_room.j + 1])
                 self.mb_x -= w + self.rect.width
                 self.rect.x = self.mb_x
+                for sprite in mobs_sprite:
+                    sprite.mb_x -= w
+                    sprite.rect.x = sprite.mb_x
             except Exception:
                 self.mb_x -= v / fps
                 self.rect.x = self.mb_x
@@ -137,6 +242,9 @@ class Player(pygame.sprite.Sprite):
                 select_room(rooms[selected_room.i - 1][selected_room.j])
                 self.mb_y += h + self.rect.height
                 self.rect.y = self.mb_y
+                for sprite in mobs_sprite:
+                    sprite.mb_y += h
+                    sprite.rect.y = sprite.mb_y
             except Exception:
                 self.mb_y += v / fps
                 self.rect.y = self.mb_y
@@ -145,6 +253,9 @@ class Player(pygame.sprite.Sprite):
                 select_room(rooms[selected_room.i + 1][selected_room.j])
                 self.mb_y -= h + self.rect.height
                 self.rect.y = self.mb_y
+                for sprite in mobs_sprite:
+                    sprite.mb_y -= h
+                    sprite.rect.y = sprite.mb_y
             except Exception:
                 self.mb_y -= v / fps
                 self.rect.y = self.mb_y
@@ -186,6 +297,36 @@ class Player(pygame.sprite.Sprite):
             except:
                 self.mb_y -= v / fps
                 self.rect.y = self.mb_y
+
+    def attack(self):
+            self.mb_x -= 10 * v / fps
+            self.rect.x = self.mb_x
+            if pygame.sprite.spritecollideany(self, mobs_sprite):
+                pygame.sprite.spritecollideany(self, mobs_sprite).health -= 1
+            self.mb_x += 10 * v / fps
+            self.rect.x = self.mb_x
+
+            self.mb_x += 10 * v / fps
+            self.rect.x = self.mb_x
+            if pygame.sprite.spritecollideany(self, mobs_sprite):
+                pygame.sprite.spritecollideany(self, mobs_sprite).health -= 1
+            self.mb_x -= 10 * v / fps
+            self.rect.x = self.mb_x
+
+            self.mb_y -= 10 * v / fps
+            self.rect.y = self.mb_y
+            if pygame.sprite.spritecollideany(self, mobs_sprite):
+                pygame.sprite.spritecollideany(self, mobs_sprite).health -= 1
+            self.mb_y += 10 * v / fps
+            self.rect.y = self.mb_y
+
+            self.mb_y += 10 * v / fps
+            self.rect.y = self.mb_y
+            if pygame.sprite.spritecollideany(self, mobs_sprite):
+                pygame.sprite.spritecollideany(self, mobs_sprite).health -= 1
+            self.mb_y -= 10 * v / fps
+            self.rect.y = self.mb_y
+
 
 
 class Room(pygame.sprite.Sprite):
@@ -238,6 +379,8 @@ class Monster(pygame.sprite.Sprite):
         self.mb_y = self.rect.y
 
     def update(self):
+        if self.health <= 0:
+            self.kill()
         x = self.player.rect.x + self.player.rect.width // 2 - self.rect.x - self.rect.width // 2
         y = self.player.rect.y + self.player.rect.height // 2 - self.rect.y - self.rect.height // 2
         v_x = 0
@@ -264,6 +407,7 @@ class Monster(pygame.sprite.Sprite):
                         self.player.health -= 1
                         if self.player.health <= 0:
                             self.player.kill()
+                            end_game(score)
                     self.tick = 0
             self.mb_x -= v_x
             self.mb_y -= v_y
@@ -312,6 +456,11 @@ def select_room(rooom):
                             elem.rect.x = -10000
                             elem.rect.y = -10000
 
+# def main_game():
+
+
+
+
 
 all_sprites = pygame.sprite.Group()
 walls = pygame.sprite.Group()
@@ -321,7 +470,6 @@ mobs_sprite = pygame.sprite.Group()
 health_shield = pygame.sprite.Group()
 
 player = Player()
-
 
 player_health = [[], []]
 for i in range(player.health):
@@ -339,9 +487,6 @@ for i in range(player.shield):
     shield.rect.y = 60
     player_health[1].append(shield)
 
-
-
-
 room = Room('g', player, 0, 1)
 room2 = Room('i', player, 0, 2)
 
@@ -355,11 +500,15 @@ mob5 = Monster(player, 'mob1.png')
 
 select_room(room)
 
+start_screen()
+
 running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            player.attack()
     player.life()
     player.update(pygame.key.get_pressed())
     screen.fill((0, 0, 0))
