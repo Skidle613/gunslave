@@ -134,7 +134,7 @@ def end_game(score):
 class Player(pygame.sprite.Sprite):
     player_image = load_image('player_1.png')
 
-    def __init__(self):
+    def __init__(self, gun=1):
         global v, fps
         super().__init__(player_sprite)
         self.add(all_sprites)
@@ -142,6 +142,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = w // 2
         self.rect.y = h // 2
+        self.gun = gun
         self.index = 0
         self.count1 = 0
         self.count2 = 0
@@ -298,7 +299,8 @@ class Player(pygame.sprite.Sprite):
                 self.mb_y -= v / fps
                 self.rect.y = self.mb_y
 
-    def attack(self):
+    def attack(self, coords):
+        if self.gun == 1:
             self.mb_x -= 10 * v / fps
             self.rect.x = self.mb_x
             if pygame.sprite.spritecollideany(self, mobs_sprite):
@@ -326,6 +328,10 @@ class Player(pygame.sprite.Sprite):
                 pygame.sprite.spritecollideany(self, mobs_sprite).health -= 1
             self.mb_y -= 10 * v / fps
             self.rect.y = self.mb_y
+        else:
+            for sprite in mobs_sprite:
+                if sprite.rect.collidepoint(coords):
+                    sprite.health -= 1
 
 
 
@@ -469,7 +475,7 @@ player_sprite = pygame.sprite.Group()
 mobs_sprite = pygame.sprite.Group()
 health_shield = pygame.sprite.Group()
 
-player = Player()
+player = Player(2)
 
 player_health = [[], []]
 for i in range(player.health):
@@ -490,7 +496,7 @@ for i in range(player.shield):
 room = Room('g', player, 0, 1)
 room2 = Room('i', player, 0, 2)
 
-wall = Wall(player, [0, 0, 100, 100], room)
+wall = Wall(player, [w // 2 - 400, h // 2 - 400, 100, 100], room)
 
 mob = Monster(player, 'mob1.png')
 mob2 = Monster(player, 'mob1.png')
@@ -508,7 +514,7 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.MOUSEBUTTONDOWN:
-            player.attack()
+            player.attack(event.pos)
     player.life()
     player.update(pygame.key.get_pressed())
     screen.fill((0, 0, 0))
