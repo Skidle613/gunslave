@@ -12,14 +12,13 @@ pygame.init()
 size = w, h = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 walls_list = []
 score = 0
-v = 150
+v = 500
 fps = 60
 selected_room = None
 portal = False
 rooms = [[None]]
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
-
 
 all_sprites = pygame.sprite.Group()
 walls = pygame.sprite.Group()
@@ -165,6 +164,12 @@ def end_game(score):
         rooms_sprite, player_sprite, mobs_sprite, \
         health_shield, \
         player, player_health
+    con = sqlite3.connect('database.db')
+    cur = con.cursor()
+    old_score = cur.execute(f"""SELECT score FROM player_stats WHERE id = 1""").fetchone()[0]
+    cur.execute(f"""UPDATE player_stats SET score = {score + old_score} WHERE id = 1""")
+    con.commit()
+    con.close()
     walls_list = []
     selected_room = None
     rooms = [[None]]
@@ -247,6 +252,9 @@ class Player(pygame.sprite.Sprite):
                         'player_7.png', 'player_8.png']
 
     def life(self):
+        if self.health <= 0:
+            self.kill()
+            end_game(score)
         if self.count1 == 8:
             self.index = (self.index + 1) % 8
             if self.orientation == 1:
@@ -274,7 +282,7 @@ class Player(pygame.sprite.Sprite):
             player_health[1][i].rect.x = 20 + 20 * i
 
     def update(self, event):
-        global selected_room
+        global selected_room, portal
         if event[pygame.K_w]:
             self.mb_y -= v / fps
             self.rect.y = self.mb_y
@@ -400,38 +408,39 @@ class Player(pygame.sprite.Sprite):
                 self.rect.y = self.mb_y
 
     def attack(self, coords):
-        if self.gun == 1:
-            self.mb_x -= 10 * v / fps
-            self.rect.x = self.mb_x
-            if pygame.sprite.spritecollideany(self, mobs_sprite):
-                pygame.sprite.spritecollideany(self, mobs_sprite).health -= 1
-            self.mb_x += 10 * v / fps
-            self.rect.x = self.mb_x
+        # if self.gun == 1:
+        #     self.mb_x -= 10 * v / fps
+        #     self.rect.x = self.mb_x
+        #     if pygame.sprite.spritecollideany(self, mobs_sprite):
+        #         pygame.sprite.spritecollideany(self, mobs_sprite).health -= 1
+        #     self.mb_x += 10 * v / fps
+        #     self.rect.x = self.mb_x
+        #
+        #     self.mb_x += 10 * v / fps
+        #     self.rect.x = self.mb_x
+        #     if pygame.sprite.spritecollideany(self, mobs_sprite):
+        #         pygame.sprite.spritecollideany(self, mobs_sprite).health -= 1
+        #     self.mb_x -= 10 * v / fps
+        #     self.rect.x = self.mb_x
+        #
+        #     self.mb_y -= 10 * v / fps
+        #     self.rect.y = self.mb_y
+        #     if pygame.sprite.spritecollideany(self, mobs_sprite):
+        #         pygame.sprite.spritecollideany(self, mobs_sprite).health -= 1
+        #     self.mb_y += 10 * v / fps
+        #     self.rect.y = self.mb_y
+        #
+        #     self.mb_y += 10 * v / fps
+        #     self.rect.y = self.mb_y
+        #     if pygame.sprite.spritecollideany(self, mobs_sprite):
+        #         pygame.sprite.spritecollideany(self, mobs_sprite).health -= 1
+        #     self.mb_y -= 10 * v / fps
+        #     self.rect.y = self.mb_y
+        # else:
+        for sprite in mobs_sprite:
+            if sprite.rect.collidepoint(coords):
+                sprite.health -= self.attacck
 
-            self.mb_x += 10 * v / fps
-            self.rect.x = self.mb_x
-            if pygame.sprite.spritecollideany(self, mobs_sprite):
-                pygame.sprite.spritecollideany(self, mobs_sprite).health -= 1
-            self.mb_x -= 10 * v / fps
-            self.rect.x = self.mb_x
-
-            self.mb_y -= 10 * v / fps
-            self.rect.y = self.mb_y
-            if pygame.sprite.spritecollideany(self, mobs_sprite):
-                pygame.sprite.spritecollideany(self, mobs_sprite).health -= 1
-            self.mb_y += 10 * v / fps
-            self.rect.y = self.mb_y
-
-            self.mb_y += 10 * v / fps
-            self.rect.y = self.mb_y
-            if pygame.sprite.spritecollideany(self, mobs_sprite):
-                pygame.sprite.spritecollideany(self, mobs_sprite).health -= 1
-            self.mb_y -= 10 * v / fps
-            self.rect.y = self.mb_y
-        else:
-            for sprite in mobs_sprite:
-                if sprite.rect.collidepoint(coords):
-                    sprite.health -= 1
 
 player = Player(2)
 
@@ -467,6 +476,15 @@ class Room(pygame.sprite.Sprite):
 
 
 class Monster(pygame.sprite.Sprite):
+    image2 = pygame.transform.scale(load_image('mob2.png'), (60, 80))
+    image2_rev = pygame.transform.flip(image2, True, False)
+
+    image3 = pygame.transform.scale(load_image('mob3.png'), (60, 80))
+    image3_rev = pygame.transform.flip(image3, True, False)
+
+    image4 = pygame.transform.scale(load_image('mob4.png'), (60, 80))
+    image4_rev = pygame.transform.flip(image4, True, False)
+
     def __init__(self, player, image):
         super().__init__(mobs_sprite)
         self.health = 10
@@ -521,9 +539,6 @@ class Monster(pygame.sprite.Sprite):
                         self.player.shield -= 1
                     else:
                         self.player.health -= 1
-                        if self.player.health <= 0:
-                            self.player.kill()
-                            end_game(score)
                     self.tick = 0
             self.mb_x -= v_x
             self.mb_y -= v_y
@@ -532,18 +547,18 @@ class Monster(pygame.sprite.Sprite):
         self.tick += 1
         if self.tick > fps:
             self.tick = fps
-        if self.health == 7:
-            self.image = pygame.transform.scale(load_image('mob2.png'), (60, 80))
+        if self.health <= 7 and self.health > 5:
+            self.image = Monster.image2
             if self.orientation == 0:
-                self.image = pygame.transform.flip(self.image, True, False)
-        if self.health == 5:
-            self.image = pygame.transform.scale(load_image('mob3.png'), (60, 80))
+                self.image = Monster.image2_rev
+        elif self.health <= 5 and self.health > 2:
+            self.image = Monster.image3
             if self.orientation == 0:
-                self.image = pygame.transform.flip(self.image, True, False)
-        if self.health == 2:
-            self.image = pygame.transform.scale(load_image('mob4.png'), (60, 80))
+                self.image = Monster.image3_rev
+        elif self.health <= 2:
+            self.image = Monster.image4
             if self.orientation == 0:
-                self.image = pygame.transform.flip(self.image, True, False)
+                self.image = Monster.image4_rev
 
 
 class Wall(pygame.sprite.Sprite):
@@ -587,6 +602,7 @@ def select_room(rooom):
 
 def main_game():
     # floor 1
+
     global score, rooms, portal
     score = 0
     been = []
@@ -600,7 +616,7 @@ def main_game():
     room5 = Room('g', player, way, 3)
     room6 = Room('g', player, 1, 3)
     room_finish = Room('g', player, 1, 4)
-    wall = Wall(player, [w // 2 - 100, h // 2 - 150, 200, 300], room_finish)
+    portal_sprite = Wall(player, [w // 2 - 100, h // 2 - 150, 200, 300], room_finish)
     select_room(room_main)
 
     running = True
@@ -613,19 +629,9 @@ def main_game():
         if selected_room != room_main and selected_room != room_finish:
             if selected_room not in been:
                 been.append(selected_room)
-                mob = Monster(player, 'mob1.png')
-                mob2 = Monster(player, 'mob1.png')
-                mob3 = Monster(player, 'mob1.png')
-                mob4 = Monster(player, 'mob1.png')
-                mob5 = Monster(player, 'mob1.png')
+                for _ in range(5):
+                    mob = Monster(player, 'mob1.png')
         if not portal:
-            for i in range(len(rooms)):
-                for j in range(len(rooms[i])):
-                    if rooms[i][j] is not None:
-                        pygame.draw.rect(screen, (200, 200, 200), (w - 400 + i * 20, 200 + j * 20, 10, 10))
-                    if rooms[i][j] == selected_room:
-                        pygame.draw.rect(screen, (255, 255, 255), (w - 400 + i * 20, 200 + j * 20, 10, 10))
-
             player.life()
             player.update(pygame.key.get_pressed())
             screen.fill((0, 0, 0))
@@ -634,17 +640,25 @@ def main_game():
             mobs_sprite.draw(screen)
             health_shield.draw(screen)
             mobs_sprite.update()
+            for i in range(len(rooms)):
+                for j in range(len(rooms[i])):
+                    if rooms[i][j]:
+                        pygame.draw.rect(screen, (160, 160, 160), (w - 200 + j * 20, 50 + i * 20, 10, 10))
+                    if rooms[i][j] == selected_room:
+                        pygame.draw.rect(screen, (255, 255, 255), (w - 200 + j * 20, 50 + i * 20, 10, 10))
+
             pygame.display.flip()
             clock.tick(fps)
         else:
-            screen.fill((255, 255, 255))
-            time.sleep(1)
+            portal_sprite.kill()
+            mobs_sprite.empty()
+            rooms_sprite.empty()
             running = False
             portal = False
 
     been = []
-    rooms = [[]]
-    room_main = Room('g', player, 2, 0)
+    rooms = [[None]]
+    room_main = Room('i', player, 2, 0)
     way = random.choice([1, 3])
     room2 = Room('i', player, 2, 1)
     room3 = Room('i', player, way, 1)
@@ -654,10 +668,10 @@ def main_game():
     room7 = Room('i', player, 4 - way, 3)
     room8 = Room('i', player, 4 - way, 2)
     if way == 1:
-        room_finish = Room('g', player, 4, 2)
+        room_finish = Room('i', player, 4, 2)
     else:
-        room_finish = Room('g', player, 0, 2)
-    wall = Wall(player, [w // 2 - 100, h // 2 - 150, 200, 300], room_finish)
+        room_finish = Room('i', player, 0, 2)
+    portal_sprite = Wall(player, [w // 2 - 100, h // 2 - 150, 200, 300], room_finish)
 
     select_room(room_main)
 
@@ -671,20 +685,9 @@ def main_game():
         if selected_room != room_main and selected_room != room_finish:
             if selected_room not in been:
                 been.append(selected_room)
-                mob = Monster(player, 'mob1.png')
-                mob2 = Monster(player, 'mob1.png')
-                mob3 = Monster(player, 'mob1.png')
-                mob4 = Monster(player, 'mob1.png')
-                mob5 = Monster(player, 'mob1.png')
-                mob6 = Monster(player, 'mob1.png')
-                mob7 = Monster(player, 'mob1.png')
+                for _ in range(7):
+                    mob = Monster(player, 'mob1.png')
         if not portal:
-            for i in range(len(rooms)):
-                for j in range(len(rooms[i])):
-                    if rooms[i][j] is not None:
-                        pygame.draw.rect(screen, (200, 200, 200), (w - 400 + i * 20, 200 + j * 20, 10, 10))
-                    if rooms[i][j] == selected_room:
-                        pygame.draw.rect(screen, (255, 255, 255), (w - 400 + i * 20, 200 + j * 20, 10, 10))
             player.life()
             player.update(pygame.key.get_pressed())
             screen.fill((0, 0, 0))
@@ -693,16 +696,24 @@ def main_game():
             mobs_sprite.draw(screen)
             health_shield.draw(screen)
             mobs_sprite.update()
+            for i in range(len(rooms)):
+                for j in range(len(rooms[i])):
+                    if rooms[i][j] is not None:
+                        pygame.draw.rect(screen, (160, 160, 160), (w - 200 + j * 20, 50 + i * 20, 10, 10))
+                    if rooms[i][j] == selected_room:
+                        pygame.draw.rect(screen, (255, 255, 255), (w - 200 + j * 20, 50 + i * 20, 10, 10))
             pygame.display.flip()
             clock.tick(fps)
         else:
+            portal_sprite.kill()
+            mobs_sprite.empty()
+            rooms_sprite.empty()
             running = False
             portal = False
 
-
     been = []
-    rooms = [[]]
-    room_main = Room('g', player, 2, 0)
+    rooms = [[None]]
+    room_main = Room('l', player, 2, 0)
     way = random.choice([1, 3])
     room2 = Room('l', player, 2, 1)
     room3 = Room('l', player, way, 1)
@@ -715,9 +726,9 @@ def main_game():
     room10 = Room('l', player, 2, 5)
     room11 = Room('l', player, 1, 5)
     if way == 1:
-        room_finish = Room('g', player, 4, 2)
+        room_finish = Room('l', player, 4, 2)
     else:
-        room_finish = Room('g', player, 0, 2)
+        room_finish = Room('l', player, 0, 2)
     wall = Wall(player, [w // 2 - 100, h // 2 - 150, 200, 300], room_finish)
 
     select_room(room_main)
@@ -732,22 +743,9 @@ def main_game():
         if selected_room != room_main and selected_room != room_finish:
             if selected_room not in been:
                 been.append(selected_room)
-                mob = Monster(player, 'mob1.png')
-                mob2 = Monster(player, 'mob1.png')
-                mob3 = Monster(player, 'mob1.png')
-                mob4 = Monster(player, 'mob1.png')
-                mob5 = Monster(player, 'mob1.png')
-                mob6 = Monster(player, 'mob1.png')
-                mob7 = Monster(player, 'mob1.png')
-                mob8 = Monster(player, 'mob1.png')
-                mob9 = Monster(player, 'mob1.png')
+                for _ in range(9):
+                    mob = Monster(player, 'mob1.png')
         if not portal:
-            for i in range(len(rooms)):
-                for j in range(len(rooms[i])):
-                    if rooms[i][j] is not None:
-                        pygame.draw.rect(screen, (200, 200, 200), (w - 400 + i * 20, 200 + j * 20, 10, 10))
-                    if rooms[i][j] == selected_room:
-                        pygame.draw.rect(screen, (255, 255, 255), (w - 400 + i * 20, 200 + j * 20, 10, 10))
             player.life()
             player.update(pygame.key.get_pressed())
             screen.fill((0, 0, 0))
@@ -756,11 +754,20 @@ def main_game():
             mobs_sprite.draw(screen)
             health_shield.draw(screen)
             mobs_sprite.update()
+            for i in range(len(rooms)):
+                for j in range(len(rooms[i])):
+                    if rooms[i][j] is not None:
+                        pygame.draw.rect(screen, (160, 160, 160), (w - 200 + j * 20, 50 + i * 20, 10, 10))
+                    if rooms[i][j] == selected_room:
+                        pygame.draw.rect(screen, (255, 255, 255), (w - 200 + j * 20, 50 + i * 20, 10, 10))
             pygame.display.flip()
             clock.tick(fps)
         else:
             running = False
             portal = False
+            portal_sprite.kill()
+            mobs_sprite.empty()
+            rooms_sprite.empty()
             end_game(score)
 
 
