@@ -4,6 +4,8 @@ import random
 import pygame
 import ctypes
 
+import sqlite3
+
 user32 = ctypes.windll.user32
 pygame.init()
 size = w, h = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
@@ -35,6 +37,7 @@ def load_image(name, color_key=None):
 
 
 def start_screen():
+    pygame.init()
     title_text = "GUNSLAVE"
     intro_text = ["НАЖМИТЕ ESC для выхода из игры",
                   "НАЖМИТЕ F для открытия окна улучшения персонажа",
@@ -68,15 +71,87 @@ def start_screen():
                 if event.key == pygame.K_SPACE:
                     return
                 if event.key == pygame.K_f:
-                    pass
+                    upgrade_player()
+        pygame.display.flip()
+        clock.tick(fps)
+
+
+def upgrade_player():
+    con = sqlite3.connect('database.db')
+    cur = con.cursor()
+    hl = cur.execute("""SELECT health FROM player_stats WHERE id = 1""").fetchone()[0]
+    hl_up = cur.execute("""SELECT health_upgrade_score FROM player_stats WHERE id = 1""").fetchone()[0]
+    sh = cur.execute("""SELECT shield FROM player_stats WHERE id = 1""").fetchone()[0]
+    sh_up = cur.execute("""SELECT shield_upgrade_score FROM player_stats WHERE id = 1""").fetchone()[0]
+    at = cur.execute("""SELECT attack FROM player_stats WHERE id = 1""").fetchone()[0]
+    at_up = cur.execute("""SELECT attack_upgrade_score FROM player_stats WHERE id = 1""").fetchone()[0]
+    score = cur.execute("""SELECT score FROM player_stats WHERE id = 1""").fetchone()[0]
+    intro_text = [("Текущее кол-во очков", str(score), ""),
+                  ("ЗДОРОВЬЕ", str(hl), "ПРОКАЧАТЬ - 1"),
+                  ("НАДО ОЧКОВ ДЛЯ ПРОКАЧКИ", str(hl_up), ""),
+                  ("ЗАЩИТА", str(sh), "ПРОКАЧАТЬ - 2"),
+                  ("НАДО ОЧКОВ ДЛЯ ПРОКАЧКИ", str(sh_up), ""),
+                  ("АТАКА", str(at), "ПРОКАЧАТЬ - 3"),
+                  ("НАДО ОЧКОВ ДЛЯ ПРОКАЧКИ", str(at_up), "")]
+    fon = pygame.transform.scale(load_image('fon.jpg'), (w, h))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 50)
+    text_coord = 300
+    for line, line2, line3 in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color((255, 207, 171)))
+        string_rendered2 = font.render(line2, 1, pygame.Color((255, 207, 171)))
+        string_rendered3 = font.render(line3, 1, pygame.Color((255, 207, 171)))
+        intro_rect = string_rendered.get_rect()
+        intro_rect2 = string_rendered2.get_rect()
+        intro_rect3 = string_rendered3.get_rect()
+        text_coord += 40
+        intro_rect.top = text_coord
+        intro_rect2.top = text_coord
+        intro_rect3.top = text_coord
+        intro_rect.x = 200
+        intro_rect2.x = 1000
+        intro_rect3.x = 1400
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+        screen.blit(string_rendered2, intro_rect2)
+        screen.blit(string_rendered3, intro_rect3)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_f:
+                    start_screen()
+                if event.key == pygame.K_1:
+                    if score >= hl_up and hl < 20:
+                        cur.execute(f"""UPDATE player_stats SET health = {hl + 1} WHERE id = 1""")
+                        cur.execute(f"""UPDATE player_stats SET health_upgrade_score = {hl_up + 1000} WHERE id = 1""")
+                        cur.execute(f"""UPDATE player_stats SET score = {score - hl_up} WHERE id = 1""")
+                        con.commit()
+                        upgrade_player()
+                elif event.key == pygame.K_2:
+                    if score >= sh_up and sh < 20:
+                        cur.execute(f"""UPDATE player_stats SET shield = {sh + 1} WHERE id = 1""")
+                        cur.execute(f"""UPDATE player_stats SET shield_upgrade_score = {sh_up + 1000} WHERE id = 1""")
+                        cur.execute(f"""UPDATE player_stats SET score = {score - sh_up} WHERE id = 1""")
+                        con.commit()
+                        upgrade_player()
+                elif event.key == pygame.K_3:
+                    if score >= at_up and at < 5:
+                        cur.execute(f"""UPDATE player_stats SET attack = {at + 1} WHERE id = 1""")
+                        cur.execute(f"""UPDATE player_stats SET attack_upgrade_score = {at_up + 1000} WHERE id = 1""")
+                        cur.execute(f"""UPDATE player_stats SET score = {score - at_up} WHERE id = 1""")
+                        con.commit()
+                        upgrade_player()
         pygame.display.flip()
         clock.tick(fps)
 
 
 def end_game(score):
-    global walls_list, selected_room, rooms, all_sprites, walls,\
-        rooms_sprite, player_sprite, mobs_sprite,\
-        health_shield,\
+    global walls_list, selected_room, rooms, all_sprites, walls, \
+        rooms_sprite, player_sprite, mobs_sprite, \
+        health_shield, \
         player, player_health
     walls_list = []
     selected_room = None
@@ -149,8 +224,13 @@ class Player(pygame.sprite.Sprite):
         self.mb_x = w // 2
         self.mb_y = h // 2
         self.orientation = 1
-        self.health = 5
-        self.shield = 5
+        self.con = sqlite3.connect('database.db')
+        self.cur = self.con.cursor()
+        self.attacck = self.cur.execute("""SELECT attack FROM player_stats WHERE id = 1""").fetchone()[0]
+        self.max_health = self.cur.execute("""SELECT health FROM player_stats WHERE id = 1""").fetchone()[0]
+        self.health = self.max_health
+        self.max_shield = self.cur.execute("""SELECT shield FROM player_stats WHERE id = 1""").fetchone()[0]
+        self.shield = self.max_shield
         self.players = ['player_1.png', 'player_2.png', 'player_3.png', 'player_4.png', 'player_5.png', 'player_6.png',
                         'player_7.png', 'player_8.png']
 
@@ -167,8 +247,8 @@ class Player(pygame.sprite.Sprite):
         if self.count2 == fps * 2:
             if self.health != 0:
                 self.shield += 1
-            if self.shield > 5:
-                self.shield = 5
+            if self.shield > self.max_shield:
+                self.shield = self.max_shield
             self.count2 = 0
         self.count2 += 1
         global player_health
@@ -334,7 +414,6 @@ class Player(pygame.sprite.Sprite):
                     sprite.health -= 1
 
 
-
 class Room(pygame.sprite.Sprite):
     def __init__(self, type, player, i=0, j=0):
         super().__init__(rooms_sprite)
@@ -368,7 +447,7 @@ class Room(pygame.sprite.Sprite):
 class Monster(pygame.sprite.Sprite):
     def __init__(self, player, image):
         super().__init__(mobs_sprite)
-        self.health = 3
+        self.health = 10
         self.player = player
         self.v = 100
         self.image = pygame.transform.scale(load_image(image), (60, 80))
@@ -462,10 +541,8 @@ def select_room(rooom):
                             elem.rect.x = -10000
                             elem.rect.y = -10000
 
+
 # def main_game():
-
-
-
 
 
 all_sprites = pygame.sprite.Group()
